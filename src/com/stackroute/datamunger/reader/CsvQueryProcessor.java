@@ -1,7 +1,22 @@
 package com.stackroute.datamunger.reader;
 
-import com.stackroute.datamunger.query.DataSet;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 
+import com.stackroute.datamunger.query.DataSet;
+import com.stackroute.datamunger.query.DataTypeDefinitions;
+import com.stackroute.datamunger.query.Filter;
+import com.stackroute.datamunger.query.GenericComparator;
+import com.stackroute.datamunger.query.Header;
+import com.stackroute.datamunger.query.Row;
+import com.stackroute.datamunger.query.RowDataTypeDefinitions;
 import com.stackroute.datamunger.query.parser.QueryParameter;
 
 //This class will read from CSV file and process and return the resultSet
@@ -10,8 +25,7 @@ public class CsvQueryProcessor implements QueryProcessingEngine {
 	 * This method will take QueryParameter object as a parameter which contains the
 	 * parsed query and will process and populate the ResultSet
 	 */
-	public DataSet getResultSet(QueryParameter queryParameter) {
-
+	public  DataSet getResultSet(QueryParameter queryParameter) {
 		/*
 		 * initialize BufferedReader to read from the file which is mentioned in
 		 * QueryParameter. Consider Handling Exception related to file reading.
@@ -29,7 +43,7 @@ public class CsvQueryProcessor implements QueryProcessingEngine {
 		 * consider this while splitting, this might cause exceptions later
 		 */
 
-		/*
+		 /*
 		 * populate the header Map object from the header array. header map is having
 		 * data type <String,Integer> to contain the header and it's index.
 		 */
@@ -51,7 +65,7 @@ public class CsvQueryProcessor implements QueryProcessingEngine {
 		 * line of the CSV file.
 		 */
 
-		/* reset the buffered reader so that it can start reading from the first line */
+		 /* reset the buffered reader so that it can start reading from the first line */
 
 		/*
 		 * skip the first line as it is already read earlier which contained the header
@@ -70,7 +84,7 @@ public class CsvQueryProcessor implements QueryProcessingEngine {
 		 * those conditions to check whether the selected row satisfies the conditions
 		 */
 
-		/*
+		 /*
 		 * from QueryParameter object, read one condition at a time and evaluate the
 		 * same. For evaluating the conditions, we will use evaluateExpressions() method
 		 * of Filter class. Please note that evaluation of expression will be done
@@ -86,7 +100,7 @@ public class CsvQueryProcessor implements QueryProcessingEngine {
 		 * city=Bangalore for eg: where salary>20000 or city=Bangalore and dept!=Sales
 		 */
 
-		/*
+		 /*
 		 * if the overall condition expression evaluates to true, then we need to check
 		 * if all columns are to be selected(select *) or few columns are to be
 		 * selected(select col1,col2). In either of the cases, we will have to populate
@@ -104,7 +118,125 @@ public class CsvQueryProcessor implements QueryProcessingEngine {
 
 		/* return dataset object */
 
-		return null;
+		DataSet dataSet=new DataSet();
+		
+		
+		String fileName = queryParameter.getFile();
+		Header headerClass = new Header();
+		RowDataTypeDefinitions rowDataType = new RowDataTypeDefinitions();
+		FileReader file;
+		String header1 = null;
+		String row1 = null;
+		List<String> rows = new ArrayList<>();
+		
+
+		try {
+			file = new FileReader(fileName);
+			final BufferedReader br = new BufferedReader(file);
+			while ((row1 = br.readLine()) != null) {
+
+				rows.add(row1);
+			}
+
+			br.close();
+		} catch (IOException e) {
+			
+			e.printStackTrace();
+		}
+		
+		
+		header1 = rows.get(0);
+		String[] headers = header1.split(",");
+		
+		for (int i = 0; i < headers.length; i++) {
+			headerClass.put(headers[i].trim(), i + 1);
+		}
+		
+		
+		System.out.println("---headers----");
+		System.out.println(Arrays.toString(headers));
+		
+		
+		row1 = rows.get(1);
+		HashMap<Integer, String> rowDataTypeMap = new HashMap<Integer, String>();
+		if (row1 != null) {
+			if (row1.lastIndexOf(",") == (row1.length() - 1)) {
+				row1 = row1 + " ";
+			}
+			final String[] data = row1.split(",");
+			System.out.println("row:" + row1);
+
+			for (int i = 0; i < data.length; i++) {
+				
+				rowDataType.put(i + 1, (DataTypeDefinitions.getDataType(data[i])).toString());
+			}
+		}
+	
+	
+		LinkedHashMap<Long, Row> dataSetMap=new LinkedHashMap<Long, Row>(); 
+		int rowCount=1;
+		List<Row> filteredRows=new ArrayList<Row>();
+		for (int i = 1; i < rows.size(); i++) {
+			Row r= new Row();
+			String line = rows.get(i);
+		
+			if (line.lastIndexOf(",") == (line.length() - 1)) {
+				line = line + " ";
+			}
+			String[] row = line.split(",");
+			for(int l=0;l<row.length;l++) {
+				row[l]=row[l].trim();
+			}
+			
+			Boolean flag =null;
+			if(queryParameter.getRestrictions()!=null) {
+			 flag = Filter.evaluateExpression(queryParameter.getRestrictions(), queryParameter.getLogicalOperators(), row,
+					headerClass,rowDataType);
+			}
+			else {
+				flag=true;
+			}
+		
+			 if(flag) {
+			List<Integer> colIndexes=new ArrayList<>();
+			List<String> fields=queryParameter.getFields();
+			if(fields.get(0).equals("*")) {
+				
+				
+				for(int k=0;k<headers.length;k++ ) {
+					r.put(headers[k],row[k] );
+				}
+			}
+			else {
+				
+				for(int k=0;k<fields.size();k++) {
+					
+					colIndexes.add(headerClass.get(fields.get(k)));
+				}
+				Collections.sort(colIndexes);
+				for(int k=0;k<colIndexes.size();k++ ) {
+					r.put(headers[colIndexes.get(k)-1],row[colIndexes.get(k)-1] );
+				}
+				
+			}
+			
+			filteredRows.add(r);
+			
+			rowCount++;
+			 }
+		}
+		if(queryParameter.getOrderByFields().size()!=0) {
+			String orderByField=queryParameter.getOrderByFields().get(0);
+			String dataType=rowDataType.get(headerClass.get(orderByField));
+			Collections.sort(filteredRows,new GenericComparator(orderByField,dataType,1));
+		}
+		for(int i=0;i<filteredRows.size();i++) {
+			dataSet.put((long)(i+1), filteredRows.get(i));
+		}
+		return dataSet;
 	}
+	
+	
+
 
 }

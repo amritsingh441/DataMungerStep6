@@ -4,14 +4,25 @@ package com.stackroute.datamunger.query.parser;
  * each aggregate function
  * */
 public class AggregateFunction {
+	
+	private	String field=null;
+	private	String function = null; 
 
-	public String getFunction() {
-		// TODO Auto-generated method stub
-		return null;
+
+	public void setField(String field) {
+		this.field = field;
+	}
+
+	public void setFunction(String function) {
+		this.function = function;
 	}
 
 	public String getField() {
-		// TODO Auto-generated method stub
-		return null;
+		return field;
 	}
+
+	public String getFunction() {
+		return function;
+	}
+
 }

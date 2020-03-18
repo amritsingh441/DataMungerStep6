@@ -2,6 +2,15 @@ package com.stackroute.datamunger.query;
 
 import java.util.HashMap;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.stackroute.datamunger.query.parser.QueryParameter;
+import com.stackroute.datamunger.query.parser.QueryParser;
+import com.stackroute.datamunger.reader.CsvAggregateQueryProcessor;
+import com.stackroute.datamunger.reader.CsvGroupByAggregateQueryProcessor;
+import com.stackroute.datamunger.reader.CsvGroupByQueryProcessor;
+import com.stackroute.datamunger.reader.CsvQueryProcessor;
+
 @SuppressWarnings("rawtypes")
 public class Query {
 
@@ -32,8 +41,30 @@ public class Query {
 		 * QueryParameter Object to it. This method is supposed to return resultSet
 		 * which is a HashMap
 		 */
+		QueryParser qParser=new QueryParser();
 
-		return null;
+		QueryParameter queryParam=qParser.parseQuery(queryString);
+
+		HashMap returnMap=null;
+		if((queryParam.getAggregateFunctions().size()!=0) && (queryParam.getGroupByFields().size()!=0)) {
+			CsvGroupByAggregateQueryProcessor csvGroupByAggregateQueryProcessor=new CsvGroupByAggregateQueryProcessor();
+			returnMap=csvGroupByAggregateQueryProcessor.getResultSet(queryParam);
+		}
+		else if(queryParam.getAggregateFunctions().size()!=0) {
+			CsvAggregateQueryProcessor csvAggregateQueryProcessor=new CsvAggregateQueryProcessor();
+			returnMap=csvAggregateQueryProcessor.getResultSet(queryParam);
+		}
+		else if(queryParam.getGroupByFields().size()!=0) {
+			CsvGroupByQueryProcessor csvGroupByQueryProcessor=new CsvGroupByQueryProcessor();
+			returnMap=csvGroupByQueryProcessor.getResultSet(queryParam);
+		}
+		else {CsvQueryProcessor CsvProcessor=new CsvQueryProcessor();
+		returnMap=CsvProcessor.getResultSet(queryParam);
+		}
+//		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+//		String result = gson.toJson(returnMap);
+//		System.out.println("data set:"+result);
+		return returnMap;
 	}
 
 }
